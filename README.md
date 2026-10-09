@@ -1,4 +1,11 @@
-# Endogenous — do-calculus MVP
+# Preface: Human Note
+This repository was designed largely using OpenAI's Codex. I have reviewed core pieces of the code, but be wary when proceeding.
+
+Motivation: In high school, a few friends and I got very into 'The Natural Number Game' (https://adam.math.hhu.de/#/g/leanprover-community/nng4/world/Tutorial/level/1), a Lean-based GUI in which players use the Peano axioms to prove theorems in arithmetic, algebra, etc. As a result of the gamification and set toolkit, I was able to (1) prove things much above my pay grade (having never seen a proof before), and (2) be confident my proofs were correct. In my recent work as an undergraduate RA, I've been working with front-door identification in DAGs. I designed this GUI to be more confident and efficient in writing do-calculus proofs. Thought it might be useful to anyone else interested in identification.
+
+--- AI-generated content begins here:---
+
+# Endogenous
 
 A local browser workbench for drawing an acyclic directed mixed graph (ADMG) and building checked derivations with the three rules of do-calculus, marginalization, and the chain rule. Saved lemmas reuse checked equalities across equation restarts. Every operation is reversible. Proofs can be exported as PDF, Markdown, or LaTeX, and complete sessions can be saved as portable JSON.
 
