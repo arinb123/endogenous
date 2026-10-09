@@ -1,0 +1,23 @@
+{
+  "name": "endogenous-workbench",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "A local ADMG workbench with checked proofs, document exports, and portable JSON state.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "fontkit": "2.0.4",
+    "mathjax-full": "3.2.2",
+    "pdfkit": "0.20.2",
+    "svg-to-pdfkit": "0.1.8"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.9.12"
+  }
+}
