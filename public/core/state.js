@@ -1,5 +1,5 @@
 import { validateGraph } from "./graph.js";
-import { validateLabel, validateProbability } from "./probability.js";
+import { validateLabel, validateProbability, variableName } from "./probability.js";
 import { reserveExpressionIds, validateExpression } from "./expression.js";
 import { replayHistory, sameExpression } from "./lemmas.js";
 
@@ -80,8 +80,9 @@ function graphShape(graph, name) {
     string(node.id, "Node ID");
     string(node.label, "Node label", 32);
     validateLabel(node.label);
-    if (labels.has(node.label)) fail("Node labels must be unique within a graph.");
-    labels.add(node.label);
+    const name = validateLabel(variableName(node.label));
+    if (labels.has(name)) fail("Node labels must be distinct ignoring case. Rename conflicting variables before importing.");
+    labels.add(name);
     if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) fail("Node positions must be finite numbers.");
   });
   graph.edges.forEach((edge) => {

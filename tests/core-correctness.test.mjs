@@ -474,13 +474,13 @@ test("stored rule certificates remain unchanged if their original input selectio
 });
 
 test("probability grammar preserves Unicode identifiers and rejects unsupported or overlapping expressions", () => {
-  const p = probability(["Y", "β"], ["X", "Z"], ["W", "age"]);
+  const p = probability(["Y", "Β"], ["X", "Z"], ["W", "AGE"]);
   assert.deepEqual(parseProbability(" P( Y, β | do(X), do(Z), W, age ) "), p);
   assert.deepEqual(parseProbability(formatProbability(p)), p);
-  assert.deepEqual(parseProbability("P(y)"), probability(["y"]));
+  assert.deepEqual(parseProbability("P(y)"), probability(["Y"]));
   assert.deepEqual(
     parseProbability("P(do | x)"),
-    probability(["do"], [], ["x"]),
+    probability(["DO"], [], ["X"]),
   );
   for (const text of [
     "P()",

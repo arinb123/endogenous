@@ -1,4 +1,4 @@
-import { formatProbability, validateProbability } from "./probability.js";
+import { formatProbability, validateProbability, valueName } from "./probability.js";
 
 // Expression IDs describe selectable syntax nodes, independently of graph IDs.
 // They only need to be unique in this in-memory editing session.
@@ -146,12 +146,36 @@ export function freeVariables(expression) {
   );
 }
 
+/** Summation indices are dummy values, displayed with primes. Keep graph IDs
+ * unchanged so algebra, saved states and graph checks retain their semantics.
+ * The decorator lets TeX attach a mathematical prime instead of text punctuation.
+ */
+export function summationLabels(variables, label, decorate = (value) => `${value}′`) {
+  const bound = new Set(variables);
+  return (id) => bound.has(id) ? decorate(label(id)) : label(id);
+}
+
+/** A selected subtree must inherit the labels of its enclosing sums. Its own
+ * binders are handled by the renderer when it enters that subtree.
+ */
+export function labelsAtExpression(root, targetId, label, decorate) {
+  const ancestors = locateExpression(root, targetId)?.ancestors || [];
+  return ancestors.reduce(
+    (resolve, node) => node.type === "sum"
+      ? summationLabels(node.variables, resolve, decorate)
+      : resolve,
+    label,
+  );
+}
+
 /** Explicit brackets make the scope of every sum/product visible in history. */
 export function formatExpression(expression, label = (id) => id) {
   if (!expression) return "Define a probability to begin";
   if (expression.type === "probability")
     return formatProbability(expression.probability, label);
-  if (expression.type === "sum")
-    return `Σ_{${expression.variables.map(label).join(", ")}} [${formatExpression(expression.body, label)}]`;
+  if (expression.type === "sum") {
+    const scopedLabel = summationLabels(expression.variables, (id) => valueName(label(id)));
+    return `Σ_{${expression.variables.map(scopedLabel).join(", ")}} [${formatExpression(expression.body, scopedLabel)}]`;
+  }
   return `(${expression.factors.map((factor) => formatExpression(factor, label)).join(" · ")})`;
 }

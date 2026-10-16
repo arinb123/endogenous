@@ -1,5 +1,7 @@
 import { sameExpression, replayHistory } from "./lemmas.js";
 import { validateGraph } from "./graph.js";
+import { summationLabels } from "./expression.js";
+import { variableName, valueName } from "./probability.js";
 
 const GREEK = {
   α: "\\alpha", β: "\\beta", γ: "\\gamma", δ: "\\delta",
@@ -54,30 +56,36 @@ export function labelLatex(value) {
   return output || "\\text{}";
 }
 
-const listLatex = (ids, label) => ids.map((id) => labelLatex(label(id))).join(", ");
+// Resolvers below already return escaped TeX; scope adds a structural prime.
+const listLatex = (ids, label) => ids.map(label).join(", ");
 const setLatex = (ids, label) =>
   ids.length ? "\\left\\{" + listLatex(ids, label) + "\\right\\}" : "\\varnothing";
+const primeLatex = (value) => `${value}^{\\prime}`;
 
 /** Every sum and product keeps explicit scope, including a sum beside a factor. */
 export function expressionLatex(expression, label = (id) => id) {
-  if (expression.type === "probability") {
-    const probability = expression.probability;
-    const conditions = [];
-    if (probability.intervention.length) {
-      conditions.push("\\operatorname{do}\\!\\left(" + listLatex(probability.intervention, label) + "\\right)");
+  function render(node, scopedLabel) {
+    if (node.type === "probability") {
+      const probability = node.probability;
+      const conditions = [];
+      if (probability.intervention.length) {
+        conditions.push("\\operatorname{do}\\!\\left(" + listLatex(probability.intervention, scopedLabel) + "\\right)");
+      }
+      if (probability.observation.length) conditions.push(listLatex(probability.observation, scopedLabel));
+      return "P\\!\\left(" + listLatex(probability.outcome, scopedLabel)
+        + (conditions.length ? " \\mid " + conditions.join(", ") : "") + "\\right)";
     }
-    if (probability.observation.length) conditions.push(listLatex(probability.observation, label));
-    return "P\\!\\left(" + listLatex(probability.outcome, label)
-      + (conditions.length ? " \\mid " + conditions.join(", ") : "") + "\\right)";
+    if (node.type === "sum") {
+      const sumLabel = summationLabels(node.variables, scopedLabel, primeLatex);
+      return "\\sum_{" + listLatex(node.variables, sumLabel) + "}\\!\\left["
+        + render(node.body, sumLabel) + "\\right]";
+    }
+    if (node.type === "product") {
+      return "\\left[" + node.factors.map((factor) => render(factor, scopedLabel)).join(" \\cdot ") + "\\right]";
+    }
+    throw new Error("Cannot export an unknown expression type.");
   }
-  if (expression.type === "sum") {
-    return "\\sum_{" + listLatex(expression.variables, label) + "}\\!\\left["
-      + expressionLatex(expression.body, label) + "\\right]";
-  }
-  if (expression.type === "product") {
-    return "\\left[" + expression.factors.map((factor) => expressionLatex(factor, label)).join(" \\cdot ") + "\\right]";
-  }
-  throw new Error("Cannot export an unknown expression type.");
+  return render(expression, (id) => labelLatex(valueName(label(id))));
 }
 
 const math = (latex) => ({ type: "math", latex });
@@ -124,8 +132,11 @@ function historyBlocks(history, label, lemmaNames, reverse = false) {
       blocks.push(math(expressionLatex(step.expression, label)));
       return;
     }
-    const c = reverse ? history[history.length - index].certificate : step.certificate;
-    blocks.push({ ...math(operationLine(index + 1, c, label, lemmaNames)), keepWithNext: true });
+    const originalIndex = reverse ? history.length - index : index;
+    const c = history[originalIndex].certificate;
+    // Rule sets contain variables; primes belong to bound values in expressions.
+    const setLabel = (id) => labelLatex(variableName(label(id)));
+    blocks.push({ ...math(operationLine(index + 1, c, setLabel, lemmaNames)), keepWithNext: true });
     blocks.push(math("= " + expressionLatex(step.expression, label)));
   });
   return blocks;

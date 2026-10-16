@@ -3,12 +3,16 @@ import {
   parseProbability,
   formatProbability,
   validateLabel,
+  variableName,
+  valueName,
 } from "./core/probability.js";
 import { RULES } from "./core/calculus.js";
 import {
   probabilityExpression,
   locateExpression,
   formatExpression,
+  labelsAtExpression,
+  summationLabels,
 } from "./core/expression.js";
 import {
   ALGEBRA,
@@ -79,9 +83,10 @@ let lastNodeClick = null;
 const $ = (selector) => document.querySelector(selector);
 const label = (id) =>
   documentState.graph.nodes.find((node) => node.id === id)?.label || id;
+const variableLabel = (id) => variableName(label(id));
 const format = (expression) => formatExpression(expression, label);
 const groupText = (ids) =>
-  ids.length ? `{${ids.map(label).join(", ")}}` : "∅";
+  ids.length ? `{${ids.map(variableLabel).join(", ")}}` : "∅";
 const make = (tag, className, text) => {
   const element = document.createElement(tag);
   if (className) element.className = className;
@@ -288,19 +293,22 @@ function nextPosition(nodes) {
 function startProbability(text) {
   const parsed = parseProbability(text);
   const graph = structuredClone(documentState.graph);
+  const byName = new Map(graph.nodes.map((node) => [variableName(node.label), node.id]));
   for (const name of [
     ...parsed.observation,
     ...parsed.intervention,
     ...parsed.outcome,
   ]) {
-    if (!graph.nodes.some((node) => node.label === name))
+    if (!byName.has(name)) {
+      const id = crypto.randomUUID();
       graph.nodes.push({
-        id: crypto.randomUUID(),
+        id,
         label: name,
         ...nextPosition(graph.nodes),
       });
+      byName.set(name, id);
+    }
   }
-  const byName = new Map(graph.nodes.map((node) => [node.label, node.id]));
   graph.nodes.forEach((node) => Object.assign(node, clampPosition(node)));
   const probability = Object.fromEntries(
     Object.entries(parsed).map(([key, values]) => [
@@ -355,7 +363,7 @@ function openQuery() {
 function openNode(id = null) {
   renameId = id;
   $("#node-title").textContent = id ? "Rename node" : "Add a node";
-  $("#node-label").value = id ? label(id) : "";
+  $("#node-label").value = id ? variableLabel(id) : "";
   $("#node-error").textContent = "";
   $("#node-dialog").showModal();
   $("#node-label").focus();
@@ -387,7 +395,7 @@ function chooseNode(id) {
   if (tool !== "select") {
     if (!edgeSource) {
       edgeSource = id;
-      graphMessage(`From ${label(id)}: choose the other node.`);
+      graphMessage(`From ${variableLabel(id)}: choose the other node.`);
     } else {
       const graph = structuredClone(documentState.graph);
       graph.edges.push({
@@ -462,14 +470,14 @@ function renderSelection() {
               : [edge.source, edge.target].includes(node.id)),
         )
         .map((edge) =>
-          label(edge.source === node.id ? edge.target : edge.source),
+          variableLabel(edge.source === node.id ? edge.target : edge.source),
         )
         .join(", ") || "none";
     $("#selection-info").textContent =
-      `${node.label} · parents: ${related("directed", "target")} · children: ${related("directed", "source")} · bidirected: ${related("bidirected")}`;
+      `${variableName(node.label)} · parents: ${related("directed", "target")} · children: ${related("directed", "source")} · bidirected: ${related("bidirected")}`;
   } else if (edge)
     $("#selection-info").textContent =
-      `${label(edge.source)} ${edge.type === "directed" ? "→" : "↔"} ${label(edge.target)}`;
+      `${variableLabel(edge.source)} ${edge.type === "directed" ? "→" : "↔"} ${variableLabel(edge.target)}`;
   else $("#selection-info").textContent = "Select a node to inspect it.";
 }
 
@@ -691,13 +699,14 @@ function renderRules() {
         options.append(make("span", "no-nodes", "No nodes yet"));
       for (const node of documentState.graph.nodes) {
         const row = make("label");
-        row.title = node.label;
+        const name = variableName(node.label);
+        row.title = name;
         const checkbox = make("input");
         checkbox.type = "checkbox";
         checkbox.id = `set-${rule}-${setName}-${node.id}`;
         checkbox.setAttribute(
           "aria-label",
-          `Rule ${rule}, ${setName}, ${node.label}`,
+          `Rule ${rule}, ${setName}, ${name}`,
         );
         checkbox.checked = panel.sets[setName].includes(node.id);
         checkbox.disabled = Object.entries(panel.sets).some(
@@ -711,7 +720,7 @@ function renderRules() {
           panel.error = false;
           renderRules();
         });
-        row.append(checkbox, make("span", "", node.label));
+        row.append(checkbox, make("span", "", name));
         options.append(row);
       }
       box.append(options);
@@ -756,7 +765,7 @@ function renderProbability() {
         : chosen[0].type === "probability"
           ? "Selected: probability factor"
           : chosen[0].type === "sum"
-            ? `Selected: sum over ${chosen[0].variables.map(label).join(", ")}`
+            ? `Selected: sum over ${chosen[0].variables.map(summationLabels(chosen[0].variables, (id) => valueName(label(id)))).join(", ")}`
             : "Selected: product";
   const steps = Math.max(0, documentState.history.length - 1);
   $("#step-count").textContent = documentState.current
@@ -823,7 +832,7 @@ function renderProbability() {
           `Applied to: ${c.targets
             .map((id) => locateExpression(previousExpression, id)?.node)
             .filter(Boolean)
-            .map(format)
+            .map((node) => formatExpression(node, labelsAtExpression(previousExpression, node.id, label)))
             .join(" and ")}`,
         ),
       );
@@ -920,9 +929,9 @@ $("#node-cancel").addEventListener("click", () => $("#node-dialog").close());
 $("#node-form").addEventListener("submit", (event) => {
   event.preventDefault();
   try {
-    const name = validateLabel($("#node-label").value.trim());
+    const name = validateLabel(variableName($("#node-label").value.trim()));
     const graph = structuredClone(documentState.graph);
-    if (graph.nodes.some((node) => node.label === name && node.id !== renameId))
+    if (graph.nodes.some((node) => variableName(node.label) === name && node.id !== renameId))
       throw new Error("A node with that name already exists.");
     if (renameId) graph.nodes.find((node) => node.id === renameId).label = name;
     else

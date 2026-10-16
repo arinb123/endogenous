@@ -1,4 +1,5 @@
 import { ALGEBRA } from "./core/algebra.js";
+import { variableName } from "./core/probability.js";
 
 function element(tag, className = "", text) {
   const node = document.createElement(tag);
@@ -57,14 +58,15 @@ export function renderAlgebraPanels(
       if (!graph.nodes.length)
         options.append(element("span", "no-nodes", "No nodes yet"));
       graph.nodes.forEach((node) => {
+        const variable = variableName(node.label);
         const row = element("label");
-        row.title = node.label;
+        row.title = variable;
         const checkbox = element("input");
         checkbox.type = "checkbox";
         checkbox.id = `set-${kind}-${name}-${node.id}`;
         checkbox.setAttribute(
           "aria-label",
-          `${definition.title}, ${name}, ${node.label}`,
+          `${definition.title}, ${name}, ${variable}`,
         );
         checkbox.checked = panel.sets[name].includes(node.id);
         checkbox.disabled = Object.entries(panel.sets).some(
@@ -76,7 +78,7 @@ export function renderAlgebraPanels(
             : panel.sets[name].filter((id) => id !== node.id);
           onChange(kind);
         });
-        row.append(checkbox, element("span", "", node.label));
+        row.append(checkbox, element("span", "", variable));
         options.append(row);
       });
       fieldset.append(options);

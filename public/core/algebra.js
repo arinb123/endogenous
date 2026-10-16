@@ -18,7 +18,7 @@ export const ALGEBRA = {
       ["expand", "Introduce sum"],
       ["collapse", "Collapse sum"],
     ],
-    equation: "P(y | x) = Σ_z P(y, z | x)",
+    equation: "P(y | x) = Σ_{z′} P(y, z′ | x)",
   },
   chain: {
     title: "Chain rule",

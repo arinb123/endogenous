@@ -65,7 +65,7 @@ test("probabilities, nested sums, and products export explicit exact scopes", ()
   const scoped = productExpression([sumExpression(["z", "w"], factor), P(["z"])]);
   const latex = expressionLatex(scoped);
   assert.equal(latex,
-    "\\left[\\sum_{\\mathrm{z}, \\mathrm{w}}\\!\\left[P\\!\\left(\\mathrm{y} \\mid \\operatorname{do}\\!\\left(\\mathrm{x}\\right), \\mathrm{z}\\right)\\right] \\cdot P\\!\\left(\\mathrm{z}\\right)\\right]");
+    "\\left[\\sum_{\\mathrm{z}^{\\prime}, \\mathrm{w}^{\\prime}}\\!\\left[P\\!\\left(\\mathrm{y} \\mid \\operatorname{do}\\!\\left(\\mathrm{x}\\right), \\mathrm{z}^{\\prime}\\right)\\right] \\cdot P\\!\\left(\\mathrm{z}\\right)\\right]");
   assert.doesNotMatch(latex, /[Σ∑·→↔⊥⫫∅]/u);
 });
 

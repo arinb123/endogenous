@@ -1,4 +1,5 @@
-import { formatExpression } from "./core/expression.js";
+import { formatExpression, summationLabels } from "./core/expression.js";
+import { valueName } from "./core/probability.js";
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -36,12 +37,12 @@ export function renderExpression(
     );
     return button;
   }
-  function render(node) {
+  function render(node, scopedLabel) {
     if (node.type === "probability") {
       const button = pick(
         node,
-        formatExpression(node, label),
-        `Select factor ${formatExpression(node, label)}`,
+        formatExpression(node, scopedLabel),
+        `Select factor ${formatExpression(node, scopedLabel)}`,
       );
       button.classList.add("probability-factor");
       return button;
@@ -50,35 +51,36 @@ export function renderExpression(
     group.dataset.expressionGroup = node.id;
     group.classList.toggle("expression-selected", selection.includes(node.id));
     if (node.type === "sum") {
+      const sumLabel = summationLabels(node.variables, scopedLabel);
       const button = pick(
         node,
         "",
-        `Select sum over ${node.variables.map(label).join(", ")}`,
+        `Select sum over ${node.variables.map(sumLabel).join(", ")}`,
       );
       button.classList.add("sum-picker");
       button.append(
         element("span", "sigma", "Σ"),
-        element("sub", "sum-variables", node.variables.map(label).join(", ")),
+        element("sub", "sum-variables", node.variables.map(sumLabel).join(", ")),
       );
       group.append(
         button,
         element("span", "expression-bracket", "["),
-        render(node.body),
+        render(node.body, sumLabel),
         element("span", "expression-bracket", "]"),
       );
     } else {
       group.append(
-        pick(node, "[", `Select product ${formatExpression(node, label)}`),
+        pick(node, "[", `Select product ${formatExpression(node, scopedLabel)}`),
       );
       node.factors.forEach((factor, index) => {
         if (index) group.append(element("span", "multiply", "·"));
-        group.append(render(factor));
+        group.append(render(factor, scopedLabel));
       });
       group.append(element("span", "expression-bracket", "]"));
     }
     return group;
   }
-  container.append(render(expression));
+  container.append(render(expression, (id) => valueName(label(id))));
   container.scrollLeft = scrollLeft;
   if (focused)
     [...container.querySelectorAll("[data-expression-pick]")]

@@ -1,8 +1,13 @@
 /** A deliberately small grammar: one P(outcomes | do(actions), observations).
- * Parsing is structural, never eval. Variables are case-sensitive identifiers.
+ * Parsing is structural, never eval. Input values resolve to capitalized variables.
  */
+// Canonicalize through lowercase too: capital ẞ and ß must both resolve to SS.
+// This makes displaying a value and reopening it as input a stable round-trip.
+export const variableName = (name) => String(name).normalize("NFC").toLowerCase().toUpperCase().normalize("NFC");
+export const valueName = (name) => variableName(name).toLowerCase().normalize("NFC");
+
 export function validateLabel(label) {
-  if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(label) || label.length > 32) {
+  if (!/^[\p{L}_][\p{L}\p{M}\p{N}_]*$/u.test(label) || label.length > 32) {
     throw new Error(
       "Use a name of up to 32 letters, digits, or underscores, starting with a letter or underscore.",
     );
@@ -30,11 +35,11 @@ export function parseProbability(input) {
   }
   function identifier() {
     skip();
-    const match = text.slice(position).match(/^[\p{L}_][\p{L}\p{N}_]*/u);
+    const match = text.slice(position).match(/^[\p{L}_][\p{L}\p{M}\p{N}_]*/u);
     if (!match)
       throw new Error(`Expected a node name at position ${position + 1}.`);
     position += match[0].length;
-    return validateLabel(match[0]);
+    return match[0];
   }
   function names() {
     const values = [identifier()];
@@ -67,12 +72,18 @@ export function parseProbability(input) {
     throw new Error(
       "Only a single probability is supported, without products, sums, or equality signs.",
     );
-  const all = [...outcome, ...intervention, ...observation];
+  // Recognize the do(...) keyword before converting value names to variables.
+  const probability = Object.fromEntries(
+    Object.entries({ outcome, intervention, observation }).map(([set, names]) =>
+      [set, names.map((name) => validateLabel(variableName(name)))],
+    ),
+  );
+  const all = Object.values(probability).flat();
   if (new Set(all).size !== all.length)
     throw new Error(
       "Each node may appear only once, as an outcome, action, or observation.",
     );
-  return { outcome, intervention, observation };
+  return probability;
 }
 
 export function validateProbability(probability, graph) {
@@ -95,9 +106,10 @@ export function validateProbability(probability, graph) {
 
 export function formatProbability(probability, label = (id) => id) {
   if (!probability) return "Define a probability to begin";
+  const value = (id) => valueName(label(id));
   const conditions = [];
   if (probability.intervention.length)
-    conditions.push(`do(${probability.intervention.map(label).join(", ")})`);
-  conditions.push(...probability.observation.map(label));
-  return `P(${probability.outcome.map(label).join(", ")}${conditions.length ? " | " + conditions.join(", ") : ""})`;
+    conditions.push(`do(${probability.intervention.map(value).join(", ")})`);
+  conditions.push(...probability.observation.map(value));
+  return `P(${probability.outcome.map(value).join(", ")}${conditions.length ? " | " + conditions.join(", ") : ""})`;
 }

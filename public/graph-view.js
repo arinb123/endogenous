@@ -1,3 +1,5 @@
+import { variableName } from "./core/probability.js";
+
 const NS = "http://www.w3.org/2000/svg";
 const measuringContext = document.createElement("canvas").getContext("2d");
 const widths = new Map();
@@ -16,7 +18,7 @@ function nodeWidth(label) {
 
 /** Keep the entire accepted label inside the fixed graph coordinate system. */
 export function clampPosition(node, x = node.x, y = node.y) {
-  const margin = Math.max(40, nodeWidth(node.label) / 2 + 8);
+  const margin = Math.max(40, nodeWidth(variableName(node.label)) / 2 + 8);
   return {
     x: Math.max(margin, Math.min(900 - margin, x)),
     y: Math.max(75, Math.min(550, y)),
@@ -76,7 +78,7 @@ export function renderGraph(svg, graph, selected, edgeSource) {
       "data-edge": edge.id,
       tabindex: 0,
       role: "button",
-      "aria-label": `${a.label} ${edge.type === "directed" ? "to" : "bidirected with"} ${b.label}`,
+      "aria-label": `${variableName(a.label)} ${edge.type === "directed" ? "to" : "bidirected with"} ${variableName(b.label)}`,
       "aria-pressed": String(active),
     });
     group.append(
@@ -104,16 +106,17 @@ export function renderGraph(svg, graph, selected, edgeSource) {
     svg.append(group);
   }
   for (const node of graph.nodes) {
+    const name = variableName(node.label);
     const active = selected?.kind === "node" && selected.id === node.id;
     const source = edgeSource === node.id;
-    const width = nodeWidth(node.label);
+    const width = nodeWidth(name);
     const group = element("g", {
       transform: `translate(${node.x},${node.y})`,
       "data-node": node.id,
       class: "graph-node",
       tabindex: 0,
       role: "button",
-      "aria-label": `Node ${node.label}`,
+      "aria-label": `Node ${name}`,
       "aria-pressed": String(active),
     });
     group.append(
@@ -138,9 +141,9 @@ export function renderGraph(svg, graph, selected, edgeSource) {
           "text-anchor": "middle",
           fill: active ? "#2449b0" : "#202936",
           "font-family": "Georgia, serif",
-          "font-size": labelFontSize(node.label),
+          "font-size": labelFontSize(name),
         },
-        node.label,
+        name,
       ),
     );
     group.append(

@@ -483,7 +483,7 @@ test("expression scope, unique IDs, unknown nodes, and stale selections are chec
     sumExpression(["b"], P(["a", "b"])),
   ]);
   assert.deepEqual(freeVariables(scoped), scopeFreeVariables(scoped));
-  assert.match(formatExpression(scoped), /Σ_\{b\} \[/);
+  assert.match(formatExpression(scoped), /Σ_\{b′\} \[/);
 });
 
 test("a constant integrand retains summation multiplicity, and an unweighted conditional sum is not a marginal", () => {
