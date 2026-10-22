@@ -66,7 +66,7 @@ Lemmas are kept for this browser session, including across restarts and undo/red
 
 ## Exporting and saving state
 
-Click **Export Proof** at any point after starting a derivation. **PDF** uses typeset LaTeX math, while **Markdown** contains display-math LaTeX blocks and **LaTeX** is a complete XeLaTeX/LuaLaTeX document. Only lemmas used by the active derivation are included, in dependency order, before the compact `(n) Given:` / `(n) Rule ..., with ...` proof steps.
+Click **Export Proof** at any point after starting a derivation. **PDF** uses typeset LaTeX math. **Markdown** uses plain-text step prefaces (for example, `(2) Rule 2, with X={}, Z={X}, Y={Y}, W={}`) and wraps only equations in `$$` display-math blocks, ready for Obsidian. **LaTeX** is a complete XeLaTeX/LuaLaTeX document. Expressions use lowercase values such as `P(y | do(x))`; rule sets name uppercase variables. Only lemmas used by the active derivation are included, in dependency order, before the compact `(n) Given:` / `(n) Rule ..., with ...` proof steps.
 
 **Save state** downloads a versioned JSON file containing the graph (including node positions and stable IDs), initial probability, active derivation snapshots and checked certificates, and saved lemmas with their proof intervals. **Import state** validates and replays that file before replacing the current document, so a failed import leaves the workbench untouched. Imported IDs and expression scopes are preserved exactly.
 

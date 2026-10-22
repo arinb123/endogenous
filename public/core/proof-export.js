@@ -89,6 +89,8 @@ export function expressionLatex(expression, label = (id) => id) {
 }
 
 const math = (latex) => ({ type: "math", latex });
+// Markdown headings are ordinary text; PDF/TeX keep their existing math layout.
+const heading = (text, latex) => ({ ...math(latex), text, keepWithNext: true });
 
 function operationLabel(certificate, lemmaNames) {
   if (certificate.kind === "do-calculus") {
@@ -112,11 +114,15 @@ function relevantSetNames(certificate) {
   return [];
 }
 
-function operationLine(number, certificate, label, lemmaNames) {
-  const operation = texText(operationLabel(certificate, lemmaNames));
+function operationHeading(number, certificate, label, lemmaNames) {
+  const operation = operationLabel(certificate, lemmaNames);
   const names = relevantSetNames(certificate);
-  const sets = names.map((name) => `${name} = ${setLatex(certificate.sets[name], label)}`).join(",\\quad ");
-  return `\\text{(${number}) ${operation}${sets ? ", with" : ""}}${sets ? `\\quad ${sets}` : ""}`;
+  const sets = names.map((name) => `${name} = ${setLatex(certificate.sets[name], (id) => labelLatex(label(id)))}`).join(",\\quad ");
+  const textSets = names.map((name) => `${name}={${certificate.sets[name].map(label).join(", ")}}`).join(", ");
+  return heading(
+    `(${number}) ${operation}${textSets ? ", with " + textSets : ""}`,
+    `\\text{(${number}) ${texText(operation)}${sets ? ", with" : ""}}${sets ? `\\quad ${sets}` : ""}`,
+  );
 }
 
 /** Display an already checked history in either direction. A reversible step
@@ -128,15 +134,15 @@ function historyBlocks(history, label, lemmaNames, reverse = false) {
   const displayed = reverse ? history.slice().reverse() : history;
   displayed.forEach((step, index) => {
     if (index === 0) {
-      blocks.push({ ...math("\\text{(1) Given:}"), keepWithNext: true });
+      blocks.push(heading("(1) Given:", "\\text{(1) Given:}"));
       blocks.push(math(expressionLatex(step.expression, label)));
       return;
     }
     const originalIndex = reverse ? history.length - index : index;
     const c = history[originalIndex].certificate;
     // Rule sets contain variables; primes belong to bound values in expressions.
-    const setLabel = (id) => labelLatex(variableName(label(id)));
-    blocks.push({ ...math(operationLine(index + 1, c, setLabel, lemmaNames)), keepWithNext: true });
+    const setLabel = (id) => variableName(label(id));
+    blocks.push(operationHeading(index + 1, c, setLabel, lemmaNames));
     blocks.push(math("= " + expressionLatex(step.expression, label)));
   });
   return blocks;
@@ -228,7 +234,7 @@ export function exportMarkdown(documentState, savedLemmas = []) {
   for (const section of proof.sections) {
     if (section.title) chunks.push("## " + markdownText(section.title));
     for (const block of section.blocks) {
-      chunks.push(block.type === "math" ? "$$\n" + block.latex + "\n$$" : markdownText(block.text));
+      chunks.push(block.text !== undefined ? markdownText(block.text) : "$$\n" + block.latex + "\n$$");
     }
   }
   return chunks.join("\n\n") + "\n";

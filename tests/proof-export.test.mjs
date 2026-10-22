@@ -99,6 +99,43 @@ test("main proof uses only the requested compact step format", () => {
   assert.equal(proof.blocks.at(-1).latex, "= " + expressionLatex(history.at(-1).expression));
 });
 
+test("Obsidian Markdown has plain-text step prefaces and lowercase equations for uppercase variables", () => {
+  const graph = {
+    nodes: [{ id: "treatment-id", label: "X" }, { id: "outcome-id", label: "Y" }],
+    edges: [],
+  };
+  const initial = P(["outcome-id"], ["treatment-id"]);
+  const history = [{ expression: initial, certificate: null }];
+  step(history, applyDoCalculus(graph, initial, [initial.id], 2, "to-observation", {
+    X: [], Z: ["treatment-id"], Y: ["outcome-id"], W: [],
+  }));
+  const state = stateFrom(history, graph);
+  const before = "P\\!\\left(\\mathrm{y} \\mid \\operatorname{do}\\!\\left(\\mathrm{x}\\right)\\right)";
+  const after = "= P\\!\\left(\\mathrm{y} \\mid \\mathrm{x}\\right)";
+  assert.equal(exportMarkdown(state),
+    `(1) Given:\n\n$$\n${before}\n$$\n\n(2) Rule 2, with X={}, Z={X}, Y={Y}, W={}\n\n$$\n${after}\n$$\n`);
+  // The same lowercase equations feed the PDF renderer and standalone TeX.
+  const expressions = buildProof(state).sections[0].blocks.filter((block) => !block.keepWithNext);
+  assert.deepEqual(expressions.map((block) => block.latex), [before, after]);
+  assert.ok(exportLatex(state).includes(before));
+  assert.ok(exportLatex(state).includes(after));
+});
+
+test("lemma and algebra prefaces also stay outside Markdown display math", () => {
+  const { first, second, state } = lemmaFixture();
+  state.graph.nodes.forEach((node) => { node.label = node.label.toUpperCase(); });
+  const markdown = exportMarkdown(state, [first, second]);
+  const model = buildProof(state, [first, second]);
+  const blocks = model.sections.flatMap((section) => section.blocks);
+  const equations = [...markdown.matchAll(/\$\$\n([\s\S]*?)\n\$\$/gu)].map((match) => match[1]);
+  assert.deepEqual(equations, blocks.filter((block) => !block.keepWithNext).map((block) => block.latex));
+  const prefaces = markdown.replace(/\$\$\n[\s\S]*?\n\$\$/gu, "");
+  for (const block of blocks.filter((block) => block.keepWithNext)) assert.ok(prefaces.includes(block.text));
+  assert.match(prefaces, /Marginalize, with Z=\{W\}/u);
+  assert.doesNotMatch(prefaces, /\\text|\\quad|\\mathrm|\\varnothing|∅/u);
+  assert.ok(equations.every((equation) => !/\\mathrm\{[XYZW]\}/u.test(equation)));
+});
+
 test("only referenced lemmas appear first and transitive dependencies precede dependents", () => {
   const { first, second, unused, state } = lemmaFixture();
   const model = buildProof(state, [unused, second, first]);
@@ -225,7 +262,7 @@ test("Markdown emits display math, escapes names, and standalone LaTeX is compil
   const markdown = exportMarkdown(state, [first, second]);
   const latex = exportLatex(state, [first, second]);
   assert.match(markdown, /^## Remove z/u);
-  assert.match(markdown, /\$\$\n\\text\{\(1\) Given:\}/u);
+  assert.match(markdown, /\(1\) Given:\n\n\$\$\nP/u);
   assert.match(markdown, /A\\_lemma \\#1 \\\$cash\\\$/u);
   assert.match(latex, /\\documentclass\[11pt\]\{article\}/u);
   assert.match(latex, /\\usepackage\{fontspec\}/u);
